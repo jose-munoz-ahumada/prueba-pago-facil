@@ -1,0 +1,25 @@
+{
+  "name": "prueba-pago-facil",
+  "version": "1.0.0",
+  "description": "Prueba Backend Pago Fácil",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [],
+  "author": "Jose Muñoz",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "express-validator": "^5.3.1",
+    "mongodb": "^3.1.13",
+    "mongoose": "^5.4.14",
+    "mongoose-double": "0.0.1",
+    "morgan": "^1.9.1"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.10"
+  }
+}
