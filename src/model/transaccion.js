@@ -1,6 +1,9 @@
 const mongoose = require('mongoose')
 require('mongoose-double')(mongoose);
 const Schema = mongoose.Schema;
+/**
+ * Definición de esquema de Tabla Transacción
+ */
 const TransaccionSchema = new Schema({
     IdTrx: {
         type: String,

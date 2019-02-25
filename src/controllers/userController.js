@@ -2,21 +2,49 @@ const {body} = require('express-validator/check');
 const Transaccion = require('../model/transaccion');
 const User = require('../model/user');
 
+/**
+ * Handler de validador express, para retornar o no respuesta JSON
+ * @param next
+ * @returns {Function}
+ */
 const validationHandler = next => result => {
     if (result.isEmpty()) return true;
     let jsonResponse = [];
-    result.array().map(i => jsonResponse.push(`El ${i.param} ${i.msg}`));
+    result.array().map(i => jsonResponse.push(`${i.param}: ${i.msg}`));
     return !next ? jsonResponse : next(jsonResponse);
 };
 
+/**
+ * Definición de validación para registro de usuarios
+ * @param method
+ * @returns {ValidationChain[]}
+ */
 exports.validate = (method) => {
     switch (method) {
         case 'registrarUsuario': {
             return [
-                body('userName', 'error').exists(),
-                body('email', 'Invalid email').exists().isEmail(),
-                body('phone').optional().isInt(),
-                body('status').optional().isIn(['enabled', 'disabled'])
+                body('Nombre', 'Es requerido').exists(),
+                body('Apellido', 'Es requerido').exists(),
+                body('DocumentoIdentidad', 'Es requerido').exists(),
+                body('TipoDocumento', 'Es requerido').exists(),
+                body('Email', 'Es requerido').exists()
+                    .isEmail()
+                    .withMessage('El Email ingresado no es válido')
+                    .custom(async (value) => {
+                        let user = await User.find({Email: value})
+                        return user.length == 0;
+                    })
+                    .withMessage(`El email ya se encuentra registrado`),
+                body('Nombre', 'Es requerido').exists(),
+                body('Password', 'Es requerido').exists(),
+                body('DOB', 'Es requerido').isInt(),
+                body('Sexo', 'Es requerido').exists().isIn(['Femienino', 'Masculino', 'Otro'])
+                    .withMessage('Los valores válidos para Sexo son Femenino, Masculino u Otro'),
+                body('NombreBanco', 'Es requerido').exists(),
+                body('NumeroCuenta', 'Es requerido').exists().isInt()
+                    .withMessage('El Número de cuenta debe contener solo números'),
+                body('TipoCuenta', 'Es requerido').exists().isIn(['Corriente', 'Vista'])
+                    .withMessage('Los valores válidos para TipoCuenta son Corriente, Vista')
             ]
         }
     }
@@ -39,8 +67,23 @@ exports.activar = async (request, response, next) => {
     if (objUser.Status === 'ACTIVO' || objUser.Comision != 0)
         response.json({status: 'NOOK', 'error': `El usuario ${request.params.id} ya fue activado anteriormente`});
     const {Comision} = request.body;
-    const updateUser = await User.updateOne({_id: objUser._id}, {$set: {Comision: Comision, Status: 'ACTIVO'}});
-    response.json(updateUser.ok == 1 ? {status: 'OK', IdUsuario: objUser._id} : {status: 'NOOK'})
+    // verificamos si es un valor numerico flotante
+    var isValid = !/^\s*$/.test(Comision) && !isNaN(Comision);
+    if (isValid) {
+        // si es valido, verificamos que el valor este entre 0 y 1
+        if (parseFloat(Comision) > 1 || parseFloat(Comision) < 0) {
+            response.json({status: 'NOOK', 'error': `La comisión no debe contener valores entre 0 y 1`});
+        }
+        // si es válido, se actualiza el registro
+        const updateUser = await User.updateOne({_id: objUser._id}, {$set: {Comision: Comision, Status: 'ACTIVO'}});
+        response.json(updateUser.ok == 1 ? {
+            status: 'OK',
+            IdUsuario: objUser._id,
+            Comision: Comision
+        } : {status: 'NOOK'})
+    } else {
+        response.json({status: 'NOOK', 'error': `El valor de comisión ingresado no parece ser válido`});
+    }
 };
 
 exports.obtenerSaldo = async (request, response, next) => {
@@ -81,10 +124,13 @@ exports.obtenerSaldo = async (request, response, next) => {
 
 exports.registrarUsuario = (request, response, next) => {
     request
-        .getValidationResult() // to get the result of above validate fn
+        .getValidationResult() // validación de express
         .then(validationHandler())
-        .then(() => {
+        .then((resultado) => {
+            if (resultado !== true)
+                response.json({status: 'NOOK', 'errors': resultado});
             const {Nombre, Apellido, DocumentoIdentidad, TipoDocumento, Email, Password, DOB, Sexo, NombreBanco, NumeroCuenta, TipoCuenta} = request.body
+            // Creamos Usuario
             User.create({
                 Nombre,
                 Apellido,

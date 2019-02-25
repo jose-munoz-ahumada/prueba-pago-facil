@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 
+/**
+ * Controller de transacciónes, nos permite validar las solicitudes que se realizan
+ */
 const transaccionController = require('../controllers/transaccionController');
 
 router.post(
